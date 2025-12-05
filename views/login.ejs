@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>로그인</title>
+  <style>
+    body {
+      font-family: 'Pretendard', sans-serif;
+      background: #f8f9fa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background: white;
+      width: 400px;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    input {
+      width: 90%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    button {
+      width: 45%;
+      padding: 10px;
+      margin: 8px;
+      border: none;
+      border-radius: 8px;
+      background: #7a5af8;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #6146d3;
+    }
+    h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+    .links {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 35px;
+    }
+    .links a {
+      color: #7a5af8;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .links a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🍜 맛집 게시판 로그인</h2>
+    <form action="/login" method="POST">
+      <input type="text" name="userid" placeholder="아이디" required><br>
+      <input type="password" name="password" placeholder="비밀번호" required><br>
+      <button type="submit">로그인</button>
+      <button type="button" onclick="location.href='/register'">회원가입</button>
+    </form>
+
+    <div class="links">
+      <a href="/find-id">아이디 찾기</a>
+      <a href="/forgot-password">비밀번호 찾기</a>
+    </div>
+  </div>
+</body>
+</html>
