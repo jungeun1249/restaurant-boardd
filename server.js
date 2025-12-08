@@ -1,6 +1,5 @@
 const express = require('express');
 const session = require('express-session');
-// ★ 세션 저장소 모듈 (필수 설치: npm install express-mysql-session)
 const MySQLStore = require('express-mysql-session')(session);
 const methodOverride = require('method-override');
 const multer = require('multer');
@@ -13,26 +12,22 @@ const mongoose = require('mongoose');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. MySQL 연결 설정 (TiDB Cloud용 SSL 설정 포함)
 const dbOptions = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '1234',
   database: process.env.DB_NAME || 'restaurant_board',
-  port: process.env.DB_PORT || 3306, // TiDB는 보통 4000번
+  port: process.env.DB_PORT || 4000,
   waitForConnections: true,
   connectionLimit: 10,
-  // ▼▼▼▼▼ [핵심] TiDB 접속을 위한 SSL 설정 ▼▼▼▼▼
   ssl: {
       minVersion: 'TLSv1.2',
       rejectUnauthorized: true
   }
-  // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 };
 
 const db = mysql.createPool(dbOptions);
 
-// 2. MongoDB 연결 (에러가 나도 서버가 꺼지지 않게 처리)
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/restaurant_board';
 
 mongoose.connect(mongoURI)
@@ -48,10 +43,8 @@ const activitySchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 });
 
-// 모델 중복 선언 방지
 const Activity = mongoose.models.Activity || mongoose.model('Activity', activitySchema);
 
-// 3. 세션 저장소 설정 (MySQL 사용)
 const sessionStore = new MySQLStore(dbOptions);
 
 app.set('view engine', 'ejs');
@@ -59,25 +52,21 @@ app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride('_method'));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 4. 세션 미들웨어 (MySQL Store 적용)
 app.use(session({
   key: 'session_cookie_name',
   secret: 'secret',
-  store: sessionStore, // ★ 핵심: MySQL에 세션 저장
+  store: sessionStore,
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 } // 1일 유지
+  cookie: { maxAge: 24 * 60 * 60 * 1000 }
 }));
 
 const uploadPath = path.join(__dirname, 'public/uploads');
 if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
 const upload = multer({ dest: uploadPath });
 
-// --- 라우팅 시작 ---
-
-// ★ [기말고사 필수] AI 체험 페이지 (Vue.js + TensorFlow.js)
 app.get('/ai', (req, res) => {
-  res.render('ai_test'); // views/ai_test.ejs 필요
+  res.render('ai_test');
 });
 
 app.get('/', (req, res) => {
@@ -85,7 +74,6 @@ app.get('/', (req, res) => {
   res.render('login');
 });
 
-// 이메일 인증
 app.post('/send-code', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).send('이메일이 필요합니다.');
@@ -94,14 +82,18 @@ app.post('/send-code', async (req, res) => {
   req.session.verifyCode = code;
   req.session.verifyEmail = email;
 
-  // ★ 본인 이메일 정보로 수정 필요
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: 'wnsrms1249@gmail.com',
-      pass: 'juhznmvdhqoosgqk'
-    }
-  });
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: 'wnsrms1249@gmail.com',
+    pass: 'wlrqrztcoftqqdzc'
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
 
   try {
     await transporter.sendMail({
@@ -118,7 +110,6 @@ app.post('/send-code', async (req, res) => {
   }
 });
 
-// 회원가입 페이지
 app.get('/register', (req, res) => res.render('register'));
 
 app.post('/register', async (req, res) => {
@@ -144,14 +135,12 @@ app.post('/register', async (req, res) => {
   res.send('<script>alert("회원가입이 완료되었습니다!");location.href="/";</script>');
 });
 
-// 로그인
 app.post('/login', async (req, res) => {
   const { userid, password } = req.body;
   const [rows] = await db.query('SELECT * FROM users WHERE userid=? AND password=?', [userid, password]);
   
   if (rows.length > 0) {
     req.session.user = rows[0];
-    // 세션 저장 후 리다이렉트 (안정성 확보)
     req.session.save(() => {
         res.redirect('/board');
     });
@@ -160,14 +149,12 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// 로그아웃
 app.get('/logout', (req, res) => {
   req.session.destroy(() => {
     res.redirect('/');
   });
 });
 
-// 비밀번호 찾기
 app.get('/forgot-password', (req, res) => res.render('forgot-password'));
 
 app.post('/forgot-password/send', async (req, res) => {
@@ -183,9 +170,17 @@ app.post('/forgot-password/send', async (req, res) => {
   req.session.resetEmail = email;
 
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: 'wnsrms1249@gmail.com', pass: 'juhznmvdhqoosgqk' }
-  });
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: 'wnsrms1249@gmail.com',
+    pass: 'wlrqrztcoftqqdzc'
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
 
   await transporter.sendMail({
     from: '맛집 게시판',
@@ -224,9 +219,17 @@ app.post('/find-id/send', async (req, res) => {
   }
   
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: 'wnsrms1249@gmail.com', pass: 'juhznmvdhqoosgqk' }
-  });
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: 'wnsrms1249@gmail.com',
+    pass: 'wlrqrztcoftqqdzc'
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
   
   await transporter.sendMail({
     from: '맛집 게시판',
@@ -238,7 +241,6 @@ app.post('/find-id/send', async (req, res) => {
   res.send('<script>alert("아이디 전송 완료");location.href="/";</script>');
 });
 
-// 게시판 목록 (DB 테이블 없을 때 에러 방지)
 app.get('/board', async (req, res) => {
   if (!req.session.user) return res.redirect('/');
 
@@ -266,7 +268,6 @@ app.get('/board', async (req, res) => {
       });
   } catch (err) {
       console.error(err);
-      // 테이블이 없으면 생성 페이지로 안내
       res.send(`DB Error: ${err.message}. <br> <a href="/setup-db">👉 여기를 눌러 테이블을 생성하세요!</a>`);
   }
 });
@@ -288,7 +289,6 @@ app.post('/write', upload.single('image'), async (req, res) => {
     [title, content, rating, lat, lng, image, nickname, nickname]
   );
 
-  // MongoDB 로그 (에러 나도 무시)
   try {
       await Activity.create({ action: '게시글 작성', user: nickname });
   } catch (e) {
@@ -440,10 +440,8 @@ app.delete('/profile', async (req, res) => {
   });
 });
 
-// ▼▼▼▼ DB 테이블 생성용 라우트 ▼▼▼▼
 app.get('/setup-db', async (req, res) => {
   try {
-    // 1. Users 테이블 생성
     await db.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -456,7 +454,6 @@ app.get('/setup-db', async (req, res) => {
       )
     `);
 
-    // 2. Posts 테이블 생성
     await db.query(`
       CREATE TABLE IF NOT EXISTS posts (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -472,7 +469,6 @@ app.get('/setup-db', async (req, res) => {
       )
     `);
 
-    // 3. Comments 테이블 생성
     await db.query(`
       CREATE TABLE IF NOT EXISTS comments (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -490,6 +486,5 @@ app.get('/setup-db', async (req, res) => {
     res.send(`DB 생성 실패: ${err.message}`);
   }
 });
-// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 app.listen(PORT, () => console.log(`✅ Full Server running at http://localhost:${PORT}`));
