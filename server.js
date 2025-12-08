@@ -13,21 +13,21 @@ const mongoose = require('mongoose');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. MySQL 연결 설정 (환경변수 또는 기본값)
+// 1. MySQL 연결 설정 (TiDB Cloud용 SSL 설정 포함)
 const dbOptions = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '1234',
   database: process.env.DB_NAME || 'restaurant_board',
-  port: process.env.DB_PORT || 3306, // TiDB 포트(4000) 지원
+  port: process.env.DB_PORT || 3306, // TiDB는 보통 4000번
   waitForConnections: true,
   connectionLimit: 10,
-  // ▼▼▼▼▼ [필수] TiDB Cloud 접속을 위한 SSL 설정 ▼▼▼▼▼
+  // ▼▼▼▼▼ [핵심] TiDB 접속을 위한 SSL 설정 ▼▼▼▼▼
   ssl: {
-      rejectUnauthorized: true,
-      minVersion: 'TLSv1.2'
+      minVersion: 'TLSv1.2',
+      rejectUnauthorized: true
   }
-  // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+  // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 };
 
 const db = mysql.createPool(dbOptions);
@@ -440,7 +440,7 @@ app.delete('/profile', async (req, res) => {
   });
 });
 
-// ▼▼▼▼ DB 테이블 생성용 임시 라우트 ▼▼▼▼
+// ▼▼▼▼ DB 테이블 생성용 라우트 ▼▼▼▼
 app.get('/setup-db', async (req, res) => {
   try {
     // 1. Users 테이블 생성
