@@ -19,9 +19,15 @@ const dbOptions = {
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '1234',
   database: process.env.DB_NAME || 'restaurant_board',
-  port: 3306,
+  port: process.env.DB_PORT || 3306, // TiDB 포트(4000) 지원
   waitForConnections: true,
-  connectionLimit: 10
+  connectionLimit: 10,
+  // ▼▼▼▼▼ [필수] TiDB Cloud 접속을 위한 SSL 설정 ▼▼▼▼▼
+  ssl: {
+      rejectUnauthorized: true,
+      minVersion: 'TLSv1.2'
+  }
+  // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 };
 
 const db = mysql.createPool(dbOptions);
