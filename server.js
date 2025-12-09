@@ -173,8 +173,9 @@ app.post("/forgot-password/send", async (req, res) => {
 app.get("/board", async (req, res) => {
   if (!req.session.user) return res.redirect("/");
 
+  const sort = req.query.sort || "date";
+  const order = req.query.order === "asc" ? "asc" : "desc";
   const query = req.query.q || "";
-  const order = req.query.order === "asc" ? "ASC" : "DESC";
 
   let sql = "SELECT * FROM posts";
   const params = [];
@@ -184,10 +185,14 @@ app.get("/board", async (req, res) => {
     params.push(`%${query}%`);
   }
 
-  sql += ` ORDER BY createdAt ${order}`;
+  let orderColumn = "createdAt";
+  if (sort === "title") orderColumn = "title";
+  if (sort === "rating") orderColumn = "rating";
+
+  sql += ` ORDER BY ${orderColumn} ${order.toUpperCase()}`;
 
   const [posts] = await db.query(sql, params);
-  res.render("index", { posts, query, order, session: req.session });
+  res.render("index", { posts, query, sort, order, session: req.session });
 });
 
 /* ----------------------------- Create Post ----------------------------- */
