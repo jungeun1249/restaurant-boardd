@@ -647,7 +647,7 @@ app.post('/delete/:id', async (req, res) => {
 });
 
 /* =========================
-   20. 프로필 페이지
+   20. 프로필 페이지 (수정됨: 기존 비밀번호 확인 로직 추가)
 ========================= */
 app.get('/profile', (req, res) => {
   if (!req.session.user) return res.redirect('/');
@@ -656,57 +656,67 @@ app.get('/profile', (req, res) => {
 
 app.put('/profile', upload.single('profileImage'), async (req, res) => {
   try {
-    const { nickname, newPassword } = req.body;
+    // 1. currentPassword(현재 비번)를 요청 본문에서 받아옵니다.
+    const { nickname, currentPassword, newPassword } = req.body;
     const id = req.session.user.id;
-    const image = req.file
-      ? req.file.filename
-      : req.session.user.profile_image;
+    
+    // 이미지가 없으면 기존 이미지 유지
+    const image = req.file ? req.file.filename : req.session.user.profile_image;
 
+    // 2. DB에서 현재 로그인한 유저의 '진짜 비밀번호'를 가져옵니다.
+    const [currentUser] = await db.query('SELECT * FROM users WHERE id=?', [id]);
+    
+    if (currentUser.length === 0) {
+      return res.redirect('/'); // 유저가 없으면 튕겨냄
+    }
+    
+    const realPassword = currentUser[0].password;
+
+    // 3. 사용자가 '새 비밀번호'를 입력했을 경우 (비밀번호 변경 시도)
     if (newPassword && newPassword.trim() !== '') {
+      
+      // (1) 현재 비밀번호를 입력하지 않았을 때
+      if (!currentPassword || currentPassword.trim() === '') {
+        return res.send(
+          `<script>alert("비밀번호를 변경하려면 현재 비밀번호를 입력해주세요.");history.back();</script>`
+        );
+      }
+
+      // (2) 입력한 현재 비밀번호가 DB에 있는 비밀번호와 다를 때 [핵심!]
+      if (currentPassword !== realPassword) {
+        return res.send(
+          `<script>alert("현재 비밀번호가 일치하지 않아 변경할 수 없습니다.");history.back();</script>`
+        );
+      }
+
+      // (3) 검증 통과: 닉네임, 새 비밀번호, 이미지 모두 업데이트
       await db.query(
         'UPDATE users SET nickname=?, password=?, profile_image=? WHERE id=?',
         [nickname, newPassword, image, id]
       );
+
     } else {
+      // 4. 비밀번호 변경 없이 닉네임이나 사진만 변경하는 경우
       await db.query(
         'UPDATE users SET nickname=?, profile_image=? WHERE id=?',
         [nickname, image, id]
       );
     }
 
-    const [updated] = await db.query('SELECT * FROM users WHERE id=?', [
-      id
-    ]);
+    // 5. 세션 정보 최신화 (변경된 정보 반영)
+    const [updated] = await db.query('SELECT * FROM users WHERE id=?', [id]);
     req.session.user = updated[0];
 
     req.session.save(() => {
       res.send(
-        `<script>alert("프로필 변경 완료");location.href="/profile";</script>`
+        `<script>alert("프로필이 성공적으로 수정되었습니다.");location.href="/profile";</script>`
       );
     });
+
   } catch (err) {
     console.error('Profile Update Error:', err);
     res.send(
       `<script>alert("프로필 변경 중 오류 발생");history.back();</script>`
-    );
-  }
-});
-
-app.delete('/profile', async (req, res) => {
-  try {
-    if (!req.session.user) return res.redirect('/');
-
-    await db.query('DELETE FROM users WHERE id=?', [
-      req.session.user.id
-    ]);
-
-    req.session.destroy(() => {
-      res.redirect('/');
-    });
-  } catch (err) {
-    console.error('Profile Delete Error:', err);
-    res.send(
-      `<script>alert("회원 탈퇴 중 오류 발생");history.back();</script>`
     );
   }
 });
