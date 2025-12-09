@@ -23,35 +23,39 @@
     input {
       width: 90%;
       padding: 10px;
-      margin: 8px 0;
+      margin: 6px 0;
       border: 1px solid #ccc;
       border-radius: 8px;
+      font-size: 15px;
     }
     button {
       width: 45%;
       padding: 10px;
-      margin: 8px;
+      margin: 8px 4px;
       border: none;
       border-radius: 8px;
       background: #7a5af8;
       color: white;
       cursor: pointer;
+      font-size: 15px;
     }
-
-    .verify-section {
+    .verify-wrapper {
       display: flex;
-      justify-content: center;
       align-items: center;
-      gap: 5px;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
     }
-
-    .verify-section input {
+    .verify-wrapper input {
       width: 60%;
     }
-
     .verify-btn {
       width: 30%;
       background: #28a745;
+    }
+    h2 {
+      margin-bottom: 20px;
+      color: #333;
     }
   </style>
 </head>
@@ -59,21 +63,20 @@
   <div class="container">
     <h2>✨ 회원가입</h2>
 
-    <!-- 이메일 인증은 form 밖에서 처리 -->
-    <div class="verify-section">
-      <input type="email" id="email" placeholder="이메일 입력" required>
-      <button class="verify-btn" onclick="sendCode()">인증번호 전송</button>
-    </div>
-
-    <!-- 회원가입 form -->
     <form action="/register" method="POST">
-      <input type="hidden" name="email" id="email-hidden">
 
-      <input type="text" name="userid" placeholder="아이디 (로그인용)" required><br>
-      <input type="text" name="nickname" placeholder="닉네임 (표시용)" required><br>
-      <input type="password" name="password" placeholder="비밀번호" required><br>
+      <input type="text" name="userid" placeholder="아이디 (로그인용)" required>
+      <input type="text" name="nickname" placeholder="닉네임 (표시용)" required>
+      <input type="password" name="password" placeholder="비밀번호" required>
 
-      <input type="text" name="verifyCode" id="verifyCode" placeholder="인증번호 입력" required><br>
+      <!-- 이메일 입력 + 전송 버튼 (form 안으로 다시 넣었음) -->
+      <div class="verify-wrapper">
+        <input type="email" id="email" name="email" placeholder="이메일 입력" required>
+        <button type="button" class="verify-btn" onclick="sendCode()">인증번호 전송</button>
+      </div>
+
+      <!-- 인증번호 입력 -->
+      <input type="text" name="verifyCode" id="verifyCode" placeholder="인증번호 입력" required>
 
       <button type="submit">회원가입</button>
       <button type="button" onclick="location.href='/'">로그인</button>
@@ -83,10 +86,7 @@
   <script>
     async function sendCode() {
       const email = document.getElementById('email').value;
-      if (!email) return alert("이메일을 입력해주세요.");
-
-      // form 제출용 hidden input에 이메일 값 반영
-      document.getElementById("email-hidden").value = email;
+      if (!email) return alert("이메일을 입력하세요.");
 
       try {
         const response = await fetch("/send-code", {
@@ -108,5 +108,6 @@
       }
     }
   </script>
+
 </body>
 </html>
