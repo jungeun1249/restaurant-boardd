@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title><%= post.title %> - 맛집 게시판</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
   <style>
     body { background: #f8f9fa; font-family: 'Pretendard', sans-serif; }
     .post-container { max-width: 900px; margin: 50px auto; background: white; padding: 40px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
@@ -19,8 +20,11 @@
     .comment-box { margin-top: 40px; }
     .comment-item { background: #f1f3f5; padding: 12px 15px; border-radius: 10px; margin-bottom: 10px; }
   </style>
-  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=d167bce40f724f4556f19ac97ffbd95d"></script>
+
+  <!-- ⭐ 지도 완전 해결버전: autoload=false + libraries=services -->
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=d167bce40f724f4556f19ac97ffbd95d&autoload=false&libraries=services"></script>
 </head>
+
 <body>
   <div class="post-container">
     <h2 class="post-title"><%= post.title %></h2>
@@ -33,31 +37,41 @@
     <div class="post-content"><%= post.content %></div>
     <div class="rating">⭐ 평점: <%= post.rating %>/5</div>
 
+    <!-- ⭐ 지도는 lat/lng 있는 경우에만 출력 -->
     <% if (post.lat && post.lng) { %>
       <div id="map" class="map-container"></div>
+
       <a 
-        href="https://map.kakao.com/link/to/<%= encodeURIComponent(post.title) %>,<%= post.lat %>,<%= post.lng %>" 
-        target="_blank" 
+        href="https://map.kakao.com/link/to/<%= encodeURIComponent(post.title) %>,<%= post.lat %>,<%= post.lng %>"
+        target="_blank"
         class="map-link">
         🧭 카카오맵으로 길찾기
       </a>
 
       <script>
-        const mapContainer = document.getElementById('map');
-        const mapOption = {
-          center: new kakao.maps.LatLng(<%= post.lat %>, <%= post.lng %>),
-          level: 3
-        };
-        const map = new kakao.maps.Map(mapContainer, mapOption);
+        // ⭐ 모든 지도 코드는 반드시 load() 안에서 실행해야 kakao undefined 오류가 안 생김
+        kakao.maps.load(function () {
+          const lat = <%= post.lat %>;
+          const lng = <%= post.lng %>;
 
-        const markerPosition = new kakao.maps.LatLng(<%= post.lat %>, <%= post.lng %>);
-        const marker = new kakao.maps.Marker({ position: markerPosition });
-        marker.setMap(map);
+          const mapContainer = document.getElementById('map');
+          const mapOption = {
+            center: new kakao.maps.LatLng(lat, lng),
+            level: 3
+          };
 
-        const infoWindow = new kakao.maps.InfoWindow({
-          content: `<div style="padding:6px 12px;font-size:14px;font-weight:bold;">📍 <%= post.title %></div>`
+          const map = new kakao.maps.Map(mapContainer, mapOption);
+
+          const markerPosition = new kakao.maps.LatLng(lat, lng);
+          const marker = new kakao.maps.Marker({ position: markerPosition });
+          marker.setMap(map);
+
+          const infoWindow = new kakao.maps.InfoWindow({
+            content: `<div style="padding:6px 12px;font-size:14px;font-weight:bold;">📍 <%= post.title %></div>`
+          });
+          
+          infoWindow.open(map, marker);
         });
-        infoWindow.open(map, marker);
       </script>
     <% } %>
 
@@ -74,6 +88,7 @@
 
     <div class="comment-box">
       <h5>💬 댓글</h5>
+
       <form action="/post/<%= post.id %>/comment" method="POST" class="mb-3">
         <textarea name="content" class="form-control mb-2" placeholder="댓글을 입력하세요" required></textarea>
         <button class="btn btn-primary w-100">댓글 등록</button>
@@ -85,6 +100,7 @@
             <strong><%= c.nickname %></strong> 
             <small class="text-muted float-end"><%= new Date(c.createdAt).toLocaleString() %></small>
             <p class="mb-0"><%= c.content %></p>
+
             <% if (session.user && session.user.nickname === c.nickname) { %>
               <div class="mt-2 text-end">
                 <a href="/comment/<%= c.id %>/edit" class="btn btn-sm btn-outline-warning">수정</a>
@@ -103,6 +119,7 @@
     <div class="text-center mt-4">
       <a href="/board" class="btn btn-secondary">← 게시판으로 돌아가기</a>
     </div>
+
   </div>
 </body>
 </html>
