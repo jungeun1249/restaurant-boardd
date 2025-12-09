@@ -77,20 +77,30 @@
   </div>
 
   <script>
-    async function sendCode() {
-      const email = document.getElementById('email').value;
-      if (!email) return alert('이메일을 입력해주세요.');
-      const response = await fetch('/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'email=' + encodeURIComponent(email)
-      });
-      if (response.ok) {
-        alert('인증번호가 이메일로 전송되었습니다!');
-      } else {
-        alert('인증번호 전송 실패');
-      }
+async function sendCode() {
+  const email = document.getElementById('email').value;
+  if (!email) return alert("이메일을 입력해주세요.");
+
+  try {
+    const response = await fetch("/send-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+
+    const result = await response.text();
+
+    if (result === "ok") {
+      alert("인증번호가 이메일로 전송되었습니다!");
+    } else {
+      alert("전송 실패: " + result);
     }
-  </script>
+  } catch (err) {
+    alert("요청 오류 발생");
+    console.error(err);
+  }
+}
+</script>
+
 </body>
 </html>
