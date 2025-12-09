@@ -4,7 +4,10 @@
   <meta charset="UTF-8">
   <title>맛집 글쓰기</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=d167bce40f724f4556f19ac97ffbd95d&libraries=services"></script>
+
+  <!-- autoload=false 추가 -->
+  <script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=d167bce40f724f4556f19ac97ffbd95d&autoload=false&libraries=services"></script>
+
   <style>
     #map { width: 100%; height: 350px; border-radius: 10px; margin-top: 10px; }
   </style>
@@ -46,27 +49,31 @@
   </div>
 
   <script>
-    const mapContainer = document.getElementById('map');
-    const mapOption = {
-      center: new kakao.maps.LatLng(35.9448338, 126.6827428),
-      level: 3
-    };
-    const map = new kakao.maps.Map(mapContainer, mapOption);
-    let marker = null;
+    kakao.maps.load(function () {
+      const mapContainer = document.getElementById('map');
+      const mapOption = {
+        center: new kakao.maps.LatLng(35.9448338, 126.6827428),
+        level: 3
+      };
 
-    kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
-      const latlng = mouseEvent.latLng;
+      const map = new kakao.maps.Map(mapContainer, mapOption);
+      let marker = null;
 
-      if (!marker) {
-        marker = new kakao.maps.Marker({ position: latlng });
-        marker.setMap(map);
-      } else {
-        marker.setPosition(latlng);
-      }
+      kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
+        const latlng = mouseEvent.latLng;
 
-      document.getElementById('lat').value = latlng.getLat();
-      document.getElementById('lng').value = latlng.getLng();
+        if (!marker) {
+          marker = new kakao.maps.Marker({ position: latlng });
+          marker.setMap(map);
+        } else {
+          marker.setPosition(latlng);
+        }
+
+        document.getElementById('lat').value = latlng.getLat();
+        document.getElementById('lng').value = latlng.getLng();
+      });
     });
   </script>
+
 </body>
 </html>
