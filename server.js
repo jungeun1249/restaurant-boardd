@@ -1,6 +1,5 @@
 const express = require('express');
 const session = require('express-session');
-const MySQLStore = require('express-mysql-session')(session);
 const methodOverride = require('method-override');
 const multer = require('multer');
 const mysql = require('mysql2/promise');
@@ -22,7 +21,7 @@ const dbOptions = {
   connectionLimit: 10,
   ssl: {
       minVersion: 'TLSv1.2',
-      rejectUnauthorized: true
+      rejectUnauthorized: false
   }
 };
 
@@ -34,7 +33,6 @@ mongoose.connect(mongoURI)
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => {
     console.log('⚠️ MongoDB connection failed (Logging disabled)');
-    console.log('Error:', err.message);
   });
 
 const activitySchema = new mongoose.Schema({
@@ -45,17 +43,13 @@ const activitySchema = new mongoose.Schema({
 
 const Activity = mongoose.models.Activity || mongoose.model('Activity', activitySchema);
 
-const sessionStore = new MySQLStore(dbOptions);
-
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride('_method'));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(session({
-  key: 'session_cookie_name',
   secret: 'secret',
-  store: sessionStore,
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 24 * 60 * 60 * 1000 }
@@ -82,18 +76,16 @@ app.post('/send-code', async (req, res) => {
   req.session.verifyCode = code;
   req.session.verifyEmail = email;
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: 'wnsrms1249@gmail.com',
-    pass: 'wlrqrztcoftqqdzc'
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    auth: {
+      user: 'wnsrms1249@gmail.com',
+      pass: 'wlrqrztcoftqqdzc'
+    },
+    tls: { rejectUnauthorized: false }
+  });
 
   try {
     await transporter.sendMail({
@@ -132,6 +124,7 @@ app.post('/register', async (req, res) => {
 
   delete req.session.verifyCode;
   delete req.session.verifyEmail;
+
   res.send('<script>alert("회원가입이 완료되었습니다!");location.href="/";</script>');
 });
 
@@ -170,17 +163,15 @@ app.post('/forgot-password/send', async (req, res) => {
   req.session.resetEmail = email;
 
   const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: 'wnsrms1249@gmail.com',
-    pass: 'wlrqrztcoftqqdzc'
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    auth: {
+      user: 'wnsrms1249@gmail.com',
+      pass: 'wlrqrztcoftqqdzc'
+    },
+    tls: { rejectUnauthorized: false }
+  });
 
   await transporter.sendMail({
     from: '맛집 게시판',
@@ -219,17 +210,15 @@ app.post('/find-id/send', async (req, res) => {
   }
   
   const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: 'wnsrms1249@gmail.com',
-    pass: 'wlrqrztcoftqqdzc'
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    auth: {
+      user: 'wnsrms1249@gmail.com',
+      pass: 'wlrqrztcoftqqdzc'
+    },
+    tls: { rejectUnauthorized: false }
+  });
   
   await transporter.sendMail({
     from: '맛집 게시판',
@@ -267,7 +256,6 @@ app.get('/board', async (req, res) => {
           session: req.session 
       });
   } catch (err) {
-      console.error(err);
       res.send(`DB Error: ${err.message}. <br> <a href="/setup-db">👉 여기를 눌러 테이블을 생성하세요!</a>`);
   }
 });
@@ -282,8 +270,6 @@ app.post('/write', upload.single('image'), async (req, res) => {
   const image = req.file ? req.file.filename : null;
   const nickname = req.session.user?.nickname;
 
-  if (!nickname) return res.send('<script>alert("로그인 세션 만료");location.href="/";</script>');
-
   await db.query(
     'INSERT INTO posts (title, content, rating, lat, lng, image, nickname, username, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())',
     [title, content, rating, lat, lng, image, nickname, nickname]
@@ -291,93 +277,81 @@ app.post('/write', upload.single('image'), async (req, res) => {
 
   try {
       await Activity.create({ action: '게시글 작성', user: nickname });
-  } catch (e) {
-      console.log('Log Error (Ignored):', e.message);
-  }
+  } catch (e) {}
 
   res.redirect('/board');
 });
 
 app.get('/post/:id', async (req, res) => {
-  try {
-    const postId = parseInt(req.params.id);
-    const [rows] = await db.query('SELECT * FROM posts WHERE id = ?', [postId]);
+  const postId = parseInt(req.params.id);
+  const [rows] = await db.query('SELECT * FROM posts WHERE id = ?', [postId]);
     
-    if (rows.length === 0) {
-        return res.send('<script>alert("게시글 없음");location.href="/board";</script>');
-    }
-    
-    const [comments] = await db.query('SELECT * FROM comments WHERE postId = ? ORDER BY createdAt DESC', [postId]);
-    
-    res.render('post', { post: rows[0], comments, session: req.session });
-  } catch (err) {
-    res.send('<script>alert("오류 발생");location.href="/board";</script>');
+  if (rows.length === 0) {
+      return res.send('<script>alert("게시글 없음");location.href="/board";</script>');
   }
+    
+  const [comments] = await db.query('SELECT * FROM comments WHERE postId = ? ORDER BY createdAt DESC', [postId]);
+    
+  res.render('post', { post: rows[0], comments, session: req.session });
 });
 
-app.post('/post/:id/comment', async (req, res) => {
-  try {
-    const postId = parseInt(req.params.id);
-    const { content } = req.body;
-    const nickname = req.session.user?.nickname || '익명';
+app.post('/post/:id/comment', async (req,  
+res) => {
+  const postId = req.params.id;
+  const { content } = req.body;
+  const nickname = req.session.user?.nickname || '익명';
     
-    await db.query('INSERT INTO comments (postId, nickname, content, createdAt) VALUES (?, ?, ?, NOW())', [postId, nickname, content]);
+  await db.query('INSERT INTO comments (postId, nickname, content, createdAt) VALUES (?, ?, ?, NOW())', [postId, nickname, content]);
     
-    try { 
-        await Activity.create({ action: '댓글 작성', user: nickname }); 
-    } catch (e) {}
+  try { 
+      await Activity.create({ action: '댓글 작성', user: nickname }); 
+  } catch (e) {}
     
-    res.redirect(`/post/${postId}`);
-  } catch (err) {
-    res.send('<script>alert("댓글 오류");history.back();</script>');
-  }
+  res.redirect(`/post/${postId}`);
 });
 
 app.get('/comment/:id/edit', async (req, res) => {
   const [rows] = await db.query('SELECT * FROM comments WHERE id=?', [req.params.id]);
-  
+    
   if (rows.length === 0) {
-    return res.send('<script>alert("댓글 없음");history.back();</script>');
+      return res.send('<script>alert("댓글 없음");history.back();</script>');
   }
-  
+    
   if (rows[0].nickname !== req.session.user.nickname) {
-    return res.send('<script>alert("본인 댓글만 수정 가능");history.back();</script>');
+      return res.send('<script>alert("본인 댓글만 수정 가능");history.back();</script>');
   }
-  
+    
   res.render('edit-comment', { comment: rows[0], session: req.session });
 });
 
 app.post('/comment/:id', async (req, res) => {
   const { content } = req.body;
   const id = req.params.id;
+    
   const [rows] = await db.query('SELECT * FROM comments WHERE id=?', [id]);
-  
-  if (rows.length === 0 || rows[0].nickname !== req.session.user.nickname) {
+  if (rows.length === 0 || rows[0].nickname !== req.session.user.nickname)
     return res.redirect('/board');
-  }
-  
+    
   await db.query('UPDATE comments SET content=? WHERE id=?', [content, id]);
   res.redirect(`/post/${rows[0].postId}`);
 });
 
 app.post('/comment/:id/delete', async (req, res) => {
   const [rows] = await db.query('SELECT * FROM comments WHERE id=?', [req.params.id]);
-  
-  if (rows.length === 0 || rows[0].nickname !== req.session.user.nickname) {
+    
+  if (rows.length === 0 || rows[0].nickname !== req.session.user.nickname)
     return res.redirect('/board');
-  }
-  
+
   await db.query('DELETE FROM comments WHERE id=?', [req.params.id]);
   res.redirect(`/post/${rows[0].postId}`);
 });
 
 app.get('/edit/:id', async (req, res) => {
   const [rows] = await db.query('SELECT * FROM posts WHERE id=?', [req.params.id]);
-  
-  if (rows.length === 0 || rows[0].nickname !== req.session.user.nickname) {
+    
+  if (rows.length === 0 || rows[0].nickname !== req.session.user.nickname)
     return res.redirect('/board');
-  }
-  
+
   res.render('edit', { post: rows[0], session: req.session });
 });
 
@@ -385,19 +359,17 @@ app.post('/edit/:id', upload.single('image'), async (req, res) => {
   const { title, content, rating, lat, lng } = req.body;
   const image = req.file ? req.file.filename : req.body.existingImage;
   const postId = req.params.id;
-  
+    
   await db.query('UPDATE posts SET title=?, content=?, rating=?, lat=?, lng=?, image=? WHERE id=?', [title, content, rating, lat, lng, image, postId]);
-  
   res.redirect(`/post/${postId}`);
 });
 
 app.post('/delete/:id', async (req, res) => {
   const [rows] = await db.query('SELECT * FROM posts WHERE id=?', [req.params.id]);
-  
-  if (rows.length === 0 || rows[0].nickname !== req.session.user.nickname) {
+    
+  if (rows.length === 0 || rows[0].nickname !== req.session.user.nickname)
     return res.redirect('/board');
-  }
-  
+
   await db.query('DELETE FROM posts WHERE id=?', [req.params.id]);
   res.redirect('/board');
 });
@@ -411,32 +383,27 @@ app.put('/profile', upload.single('profileImage'), async (req, res) => {
   const { nickname, newPassword } = req.body;
   const id = req.session.user.id;
   const image = req.file ? req.file.filename : req.session.user.profile_image;
-  
-  try {
-    if (newPassword && newPassword.trim() !== '') {
-      await db.query('UPDATE users SET nickname=?, password=?, profile_image=? WHERE id=?', [nickname, newPassword, image, id]);
-    } else {
-      await db.query('UPDATE users SET nickname=?, profile_image=? WHERE id=?', [nickname, image, id]);
-    }
     
-    const [updated] = await db.query('SELECT * FROM users WHERE id=?', [id]);
-    req.session.user = updated[0];
-    
-    req.session.save(() => {
-        res.send('<script>alert("프로필 변경 완료");location.href="/profile";</script>');
-    });
-  } catch (err) {
-    res.send('<script>alert("오류 발생");history.back();</script>');
+  if (newPassword && newPassword.trim() !== '') {
+    await db.query('UPDATE users SET nickname=?, password=?, profile_image=? WHERE id=?', [nickname, newPassword, image, id]);
+  } else {
+    await db.query('UPDATE users SET nickname=?, profile_image=? WHERE id=?', [nickname, image, id]);
   }
+    
+  const [updated] = await db.query('SELECT * FROM users WHERE id=?', [id]);
+  req.session.user = updated[0];
+    
+  req.session.save(() => {
+    res.send('<script>alert("프로필 변경 완료");location.href="/profile";</script>');
+  });
 });
 
 app.delete('/profile', async (req, res) => {
   if (!req.session.user) return res.redirect('/');
-  
+    
   await db.query('DELETE FROM users WHERE id=?', [req.session.user.id]);
-  
   req.session.destroy(() => {
-      res.redirect('/');
+    res.redirect('/');
   });
 });
 
@@ -482,9 +449,8 @@ app.get('/setup-db', async (req, res) => {
 
     res.send('<h1>🎉 DB 테이블 생성 완료!</h1><p>이제 <a href="/">홈으로 돌아가서</a> 로그인해보세요.</p>');
   } catch (err) {
-    console.error(err);
     res.send(`DB 생성 실패: ${err.message}`);
   }
 });
 
-app.listen(PORT, () => console.log(`✅ Full Server running at http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
