@@ -37,20 +37,19 @@
       color: white;
       cursor: pointer;
     }
-    h2 {
-      margin-bottom: 20px;
-      color: #333;
-    }
+
     .verify-section {
       display: flex;
       justify-content: center;
       align-items: center;
       gap: 5px;
     }
+
     .verify-section input {
       width: 60%;
     }
-    .verify-section button {
+
+    .verify-btn {
       width: 30%;
       background: #28a745;
     }
@@ -59,15 +58,20 @@
 <body>
   <div class="container">
     <h2>✨ 회원가입</h2>
+
+    <!-- 이메일 인증은 form 밖에서 처리 -->
+    <div class="verify-section">
+      <input type="email" id="email" placeholder="이메일 입력" required>
+      <button class="verify-btn" onclick="sendCode()">인증번호 전송</button>
+    </div>
+
+    <!-- 회원가입 form -->
     <form action="/register" method="POST">
+      <input type="hidden" name="email" id="email-hidden">
+
       <input type="text" name="userid" placeholder="아이디 (로그인용)" required><br>
       <input type="text" name="nickname" placeholder="닉네임 (표시용)" required><br>
       <input type="password" name="password" placeholder="비밀번호" required><br>
-
-      <div class="verify-section">
-        <input type="email" name="email" id="email" placeholder="이메일 입력" required>
-        <button type="button" onclick="sendCode()">인증번호 전송</button>
-      </div>
 
       <input type="text" name="verifyCode" id="verifyCode" placeholder="인증번호 입력" required><br>
 
@@ -77,30 +81,32 @@
   </div>
 
   <script>
-async function sendCode() {
-  const email = document.getElementById('email').value;
-  if (!email) return alert("이메일을 입력해주세요.");
+    async function sendCode() {
+      const email = document.getElementById('email').value;
+      if (!email) return alert("이메일을 입력해주세요.");
 
-  try {
-    const response = await fetch("/send-code", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email })
-    });
+      // form 제출용 hidden input에 이메일 값 반영
+      document.getElementById("email-hidden").value = email;
 
-    const result = await response.text();
+      try {
+        const response = await fetch("/send-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email })
+        });
 
-    if (result === "ok") {
-      alert("인증번호가 이메일로 전송되었습니다!");
-    } else {
-      alert("전송 실패: " + result);
+        const result = await response.text();
+
+        if (result === "ok") {
+          alert("인증번호가 이메일로 전송되었습니다!");
+        } else {
+          alert("전송 실패: " + result);
+        }
+      } catch (err) {
+        alert("요청 오류 발생");
+        console.error(err);
+      }
     }
-  } catch (err) {
-    alert("요청 오류 발생");
-    console.error(err);
-  }
-}
-</script>
-
+  </script>
 </body>
 </html>
