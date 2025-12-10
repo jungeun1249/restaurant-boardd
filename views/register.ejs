@@ -69,13 +69,11 @@
       <input type="text" name="nickname" placeholder="닉네임 (표시용)" required>
       <input type="password" name="password" placeholder="비밀번호" required>
 
-      <!-- 이메일 입력 + 전송 버튼 (form 안으로 다시 넣었음) -->
       <div class="verify-wrapper">
         <input type="email" id="email" name="email" placeholder="이메일 입력" required>
         <button type="button" class="verify-btn" onclick="sendCode()">인증번호 전송</button>
       </div>
 
-      <!-- 인증번호 입력 -->
       <input type="text" name="verifyCode" id="verifyCode" placeholder="인증번호 입력" required>
 
       <button type="submit">회원가입</button>

@@ -21,7 +21,6 @@
     .comment-item { background: #f1f3f5; padding: 12px 15px; border-radius: 10px; margin-bottom: 10px; }
   </style>
 
-  <!-- ⭐ 지도 완전 해결버전: autoload=false + libraries=services -->
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=d167bce40f724f4556f19ac97ffbd95d&autoload=false&libraries=services"></script>
 </head>
 
@@ -37,7 +36,6 @@
     <div class="post-content"><%= post.content %></div>
     <div class="rating">⭐ 평점: <%= post.rating %>/5</div>
 
-    <!-- ⭐ 지도는 lat/lng 있는 경우에만 출력 -->
     <% if (post.lat && post.lng) { %>
       <div id="map" class="map-container"></div>
 
@@ -49,7 +47,6 @@
       </a>
 
       <script>
-        // ⭐ 모든 지도 코드는 반드시 load() 안에서 실행해야 kakao undefined 오류가 안 생김
         kakao.maps.load(function () {
           const lat = <%= post.lat %>;
           const lng = <%= post.lng %>;

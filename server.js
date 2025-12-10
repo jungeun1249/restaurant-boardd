@@ -1,5 +1,3 @@
-// server.js
-
 const express = require('express');
 const session = require('express-session');
 const methodOverride = require('method-override');
@@ -13,11 +11,8 @@ const { Resend } = require('resend');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-/* =========================
-   1. MySQL (TiDB) 연결
-========================= */
 const dbOptions = {
-  host: process.env.DB_HOST,       // Render 환경변수
+  host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
@@ -32,9 +27,6 @@ const dbOptions = {
 
 const db = mysql.createPool(dbOptions);
 
-/* =========================
-   2. MongoDB (선택, 실패시 무시)
-========================= */
 mongoose
   .connect(process.env.MONGO_URI || 'mongodb://localhost:27017/restaurant_board')
   .then(() => console.log('MongoDB connected'))
@@ -49,9 +41,6 @@ const activitySchema = new mongoose.Schema({
 const Activity =
   mongoose.models.Activity || mongoose.model('Activity', activitySchema);
 
-/* =========================
-   3. 기본 설정 & 미들웨어
-========================= */
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -67,37 +56,22 @@ app.use(
   })
 );
 
-/* =========================
-   4. 파일 업로드 설정
-========================= */
 const uploadPath = path.join(__dirname, 'public/uploads');
 if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
 const upload = multer({ dest: uploadPath });
 
-/* =========================
-   5. Resend 이메일 설정
-========================= */
 const resend = new Resend(process.env.RESEND_API_KEY);
 const EMAIL_FROM = process.env.EMAIL_FROM || '맛집 게시판 <onboarding@resend.dev>';
 
-/* =========================
-   6. AI 체험 페이지
-========================= */
 app.get('/ai', (req, res) => {
   res.render('ai_test');
 });
 
-/* =========================
-   7. 로그인 / 메인
-========================= */
 app.get('/', (req, res) => {
   if (req.session.user) return res.redirect('/board');
   res.render('login');
 });
 
-/* =========================
-   8. 이메일 인증번호 전송
-========================= */
 app.post('/send-code', async (req, res) => {
   try {
     const { email } = req.body;
@@ -122,9 +96,6 @@ app.post('/send-code', async (req, res) => {
   }
 });
 
-/* =========================
-   9. 회원가입
-========================= */
 app.get('/register', (req, res) => res.render('register'));
 
 app.post('/register', async (req, res) => {
@@ -180,9 +151,6 @@ app.post('/register', async (req, res) => {
   }
 });
 
-/* =========================
-   10. 로그인 / 로그아웃
-========================= */
 app.post('/login', async (req, res) => {
   try {
     const { userid, password } = req.body;
@@ -212,9 +180,6 @@ app.get('/logout', (req, res) => {
   });
 });
 
-/* =========================
-   11. 아이디 찾기
-========================= */
 app.get('/find-id', (req, res) => res.render('find-id'));
 
 app.post('/find-id/send', async (req, res) => {
@@ -249,9 +214,6 @@ app.post('/find-id/send', async (req, res) => {
   }
 });
 
-/* =========================
-   12. 비밀번호 재설정
-========================= */
 app.get('/forgot-password', (req, res) =>
   res.render('forgot-password')
 );
@@ -328,9 +290,6 @@ app.post('/reset-password', async (req, res) => {
   }
 });
 
-/* =========================
-   13. 게시판 목록 (/board)
-========================= */
 app.get('/board', async (req, res) => {
   try {
     if (!req.session.user) return res.redirect('/');
@@ -370,18 +329,11 @@ app.get('/board', async (req, res) => {
   }
 });
 
-/* =========================
-   14. 글쓰기 페이지
-========================= */
 app.get('/write', (req, res) => {
   if (!req.session.user) return res.redirect('/');
   res.render('write');
 });
 
-/* =========================
-   15. 글 작성 POST (/write)
-      - lat, lng NULL 처리 포함
-========================= */
 app.post('/write', upload.single('image'), async (req, res) => {
   try {
     const { title, content, rating, lat, lng } = req.body;
@@ -419,9 +371,6 @@ app.post('/write', upload.single('image'), async (req, res) => {
   }
 });
 
-/* =========================
-   16. 게시글 상세 보기
-========================= */
 app.get('/post/:id', async (req, res) => {
   try {
     const postId = parseInt(req.params.id);
@@ -453,9 +402,6 @@ app.get('/post/:id', async (req, res) => {
   }
 });
 
-/* =========================
-   17. 댓글 작성
-========================= */
 app.post('/post/:id/comment', async (req, res) => {
   try {
     const postId = parseInt(req.params.id);
@@ -480,9 +426,6 @@ app.post('/post/:id/comment', async (req, res) => {
   }
 });
 
-/* =========================
-   18. 댓글 수정 / 삭제
-========================= */
 app.get('/comment/:id/edit', async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -571,9 +514,6 @@ app.post('/comment/:id/delete', async (req, res) => {
   }
 });
 
-/* =========================
-   19. 게시글 수정 / 삭제
-========================= */
 app.get('/edit/:id', async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -646,9 +586,6 @@ app.post('/delete/:id', async (req, res) => {
   }
 });
 
-/* =========================
-   20. 프로필 페이지 (수정됨: 기존 비밀번호 확인 로직 추가)
-========================= */
 app.get('/profile', (req, res) => {
   if (!req.session.user) return res.redirect('/');
   res.render('profile', { user: req.session.user });
@@ -656,54 +593,45 @@ app.get('/profile', (req, res) => {
 
 app.put('/profile', upload.single('profileImage'), async (req, res) => {
   try {
-    // 1. currentPassword(현재 비번)를 요청 본문에서 받아옵니다.
     const { nickname, currentPassword, newPassword } = req.body;
     const id = req.session.user.id;
-    
-    // 이미지가 없으면 기존 이미지 유지
+
     const image = req.file ? req.file.filename : req.session.user.profile_image;
 
-    // 2. DB에서 현재 로그인한 유저의 '진짜 비밀번호'를 가져옵니다.
     const [currentUser] = await db.query('SELECT * FROM users WHERE id=?', [id]);
     
     if (currentUser.length === 0) {
-      return res.redirect('/'); // 유저가 없으면 튕겨냄
+      return res.redirect('/');
     }
     
     const realPassword = currentUser[0].password;
 
-    // 3. 사용자가 '새 비밀번호'를 입력했을 경우 (비밀번호 변경 시도)
     if (newPassword && newPassword.trim() !== '') {
-      
-      // (1) 현재 비밀번호를 입력하지 않았을 때
+
       if (!currentPassword || currentPassword.trim() === '') {
         return res.send(
           `<script>alert("비밀번호를 변경하려면 현재 비밀번호를 입력해주세요.");history.back();</script>`
         );
       }
 
-      // (2) 입력한 현재 비밀번호가 DB에 있는 비밀번호와 다를 때 [핵심!]
       if (currentPassword !== realPassword) {
         return res.send(
           `<script>alert("현재 비밀번호가 일치하지 않아 변경할 수 없습니다.");history.back();</script>`
         );
       }
 
-      // (3) 검증 통과: 닉네임, 새 비밀번호, 이미지 모두 업데이트
       await db.query(
         'UPDATE users SET nickname=?, password=?, profile_image=? WHERE id=?',
         [nickname, newPassword, image, id]
       );
 
     } else {
-      // 4. 비밀번호 변경 없이 닉네임이나 사진만 변경하는 경우
       await db.query(
         'UPDATE users SET nickname=?, profile_image=? WHERE id=?',
         [nickname, image, id]
       );
     }
 
-    // 5. 세션 정보 최신화 (변경된 정보 반영)
     const [updated] = await db.query('SELECT * FROM users WHERE id=?', [id]);
     req.session.user = updated[0];
 
@@ -721,9 +649,6 @@ app.put('/profile', upload.single('profileImage'), async (req, res) => {
   }
 });
 
-/* =========================
-   21. DB 테이블 생성용 라우트
-========================= */
 app.get('/setup-db', async (req, res) => {
   try {
     await db.query(`
@@ -773,9 +698,6 @@ app.get('/setup-db', async (req, res) => {
   }
 });
 
-/* =========================
-   22. 서버 시작
-========================= */
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
